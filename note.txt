@@ -1,3 +1,13 @@
-VUI LÒNG VÀO CÀI ĐẶT BẬT XÁC THỰC 2 YẾU TỐ ĐỂ ĐẢM BẢO AN TOÀN.
-
-SỬ DỤNG ID BẠN DÙNG ĐỂ XÁC THỰC API VÀ /START BOT t.me/bankaowekhook_bot ĐỂ NHẬN MÃ XÁC THỰC 2 YẾU TỐ.
+<div style="line-height: 1.6;">
+    <strong style="color: #d32f2f; text-transform: uppercase;">⚠️ Cảnh báo bảo mật:</strong> 
+    Vui lòng vào <b>Cài đặt</b> để bật <span style="color: #2e7d32;">Xác thực 2 yếu tố</span> để đảm bảo an toàn cho tài khoản.
+    <br>
+    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #d4a537;">
+        Sử dụng <b>ID</b> bạn dùng để xác thực API và 
+        <a href="https://t.me/bankaowekhook_bot" target="_blank" 
+           style="background: #0088cc; color: white; padding: 2px 8px; border-radius: 4px; text-decoration: none; font-size: 12px;">
+           <i class="ri-telegram-fill"></i> /start bot
+        </a> 
+        để nhận mã xác thực 2 yếu tố (2FA).
+    </div>
+</div>
