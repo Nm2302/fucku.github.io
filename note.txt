@@ -1,0 +1,3 @@
+VUI LÒNG VÀO CÀI ĐẶT BẬT XÁC THỰC 2 YẾU TỐ ĐỂ ĐẢM BẢO AN TOÀN.
+
+SỬ DỤNG ID BẠN DÙNG ĐỂ XÁC THỰC API VÀ /START BOT t.me/bankaowekhook_bot ĐỂ NHẬN MÃ XÁC THỰC 2 YẾU TỐ.
