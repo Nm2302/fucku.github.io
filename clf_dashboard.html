@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Attack Statistics</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;color:#1f2937;padding:16px}
+  /* â”€â”€ Loading / Error â”€â”€ */
+  #loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:80vh;gap:14px}
+  .spinner{width:44px;height:44px;border:4px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #error-box{display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:24px;text-align:center;color:#b91c1c;font-size:15px;margin:40px 0}
+  #app{display:none}
+  .card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 6px rgba(0,0,0,.08)}
+  .header-card{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700}
+  .header-info{flex:1}
+  .header-info .name{font-size:18px;font-weight:700}
+  .header-info .uname{color:#6b7280;font-size:13px}
+  .uid-badge{background:#eff6ff;color:#3b82f6;border-radius:20px;padding:4px 12px;font-size:13px;display:flex;align-items:center;gap:6px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+  .stat-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+  .stat-label{font-size:13px;color:#6b7280;margin-bottom:4px}
+  .stat-value{font-size:28px;font-weight:700}
+  .stat-value.blue{color:#3b82f6}
+  .stat-value.orange{color:#f97316}
+  .progress-bar{height:8px;border-radius:4px;background:#e5e7eb;margin-top:10px;overflow:hidden;display:flex}
+  .progress-seg{height:100%;transition:width .3s}
+  .progress-seg.green{background:#22c55e}
+  .progress-seg.blue{background:#3b82f6}
+  .progress-seg.red{background:#ef4444}
+  .legend{display:flex;gap:14px;margin-top:6px;flex-wrap:wrap}
+  .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280}
+  .leg-dot{width:10px;height:10px;border-radius:50%}
+  .leg-dot.green{background:#22c55e}
+  .leg-dot.blue{background:#3b82f6}
+  .leg-dot.red{background:#ef4444}
+  .ip-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .ip-item{background:#f9fafb;border-radius:8px;padding:10px}
+  .ip-item .lbl{font-size:11px;color:#9ca3af}
+  .ip-item .val{font-size:20px;font-weight:700}
+  .ip-item .val.green{color:#16a34a}
+  .ip-item .val.red{color:#dc2626}
+  .ip-item .val.orange{color:#ea580c}
+  .traffic-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+  .section-title{font-size:16px;font-weight:700;margin-bottom:4px}
+  .section-sub{font-size:12px;color:#6b7280;margin-bottom:14px}
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .chart-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+  .chart-title{font-size:14px;font-weight:700;margin-bottom:12px}
+  .chart-wrap{position:relative;height:160px;display:flex;align-items:center;justify-content:center}
+  .auto-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 6px rgba(0,0,0,.07);margin-bottom:14px}
+  .auto-sub{font-size:12px;color:#3b82f6;margin-bottom:16px}
+  .type-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px}
+  .type-row .lbl{font-weight:500}
+  .type-row .val{color:#374151}
+  .bar-track{background:#e5e7eb;border-radius:4px;height:8px;margin-bottom:12px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;background:#3b82f6}
+  .country-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+  .country-row{display:flex;align-items:center;justify-content:space-between;padding:12px 10px;border-bottom:1px solid #f3f4f6}
+  .country-left{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+  .country-right{text-align:right}
+  .country-count{font-size:14px;font-weight:600}
+  .country-pct{font-size:11px;color:#6b7280}
+  .flag{font-size:18px}
+  .show-all{color:#3b82f6;font-size:13px;cursor:pointer;text-align:right;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <span style="color:#6b7280;font-size:14px">Loading statisticsâ€¦</span>
+</div>
+<div id="error-box"></div>
+<div id="app"></div>
+
+<script>
+// â”€â”€ Secret â€” must match DASHBOARD_SECRET in graph.py â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const SECRET = "DstatCLF_2026_xK9mZ7";
+
+const PIE_COLORS = ['#6366f1','#22d3ee','#f59e0b','#ec4899','#84cc16','#f97316','#06b6d4','#8b5cf6','#10b981','#ef4444'];
+
+function fmt(n){ return Number(n).toLocaleString(); }
+function pct(n,t){ return t?(n/t*100).toFixed(1)+'%':'0%'; }
+function parsePairs(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.map(s=>{
+    const i=s.lastIndexOf('-');
+    return {label:s.slice(0,i),value:+s.slice(i+1)||0};
+  }).filter(x=>x.label);
+}
+function flag(cc){
+  if(!cc||cc.length<2) return 'ðŸŒ';
+  return [...cc.toUpperCase().slice(0,2)].map(c=>String.fromCodePoint(0x1F1E6+c.charCodeAt(0)-65)).join('');
+}
+function showError(msg){
+  document.getElementById('loader').style.display='none';
+  const b=document.getElementById('error-box');
+  b.style.display='block';
+  b.innerHTML=`<div style="font-size:30px;margin-bottom:10px">âš ï¸</div><div>${msg}</div>`;
+}
+
+// â”€â”€ HMAC-SHA256 verify (first 16 hex chars) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function verifyHMAC(data, expectedSig){
+  const enc=new TextEncoder();
+  const key=await crypto.subtle.importKey(
+    'raw',enc.encode(SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const buf=await crypto.subtle.sign('HMAC',key,enc.encode(data));
+  const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+  return hex===expectedSig;
+}
+
+// â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+(async()=>{
+  try{
+    const params=new URLSearchParams(location.search);
+    const d=params.get('d'), s=params.get('s');
+    if(!d||!s){ showError('Missing data parameters.'); return; }
+
+    const ok=await verifyHMAC(d,s);
+    if(!ok){ showError('âš ï¸ Invalid or tampered data.<br>This link cannot be modified.'); return; }
+
+    // base64url â†’ JSON
+    const pad=(4-d.length%4)%4;
+    const D=JSON.parse(atob(d.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat(pad)));
+
+    document.getElementById('loader').style.display='none';
+    const app=document.getElementById('app');
+    app.style.display='block';
+
+    const sv=D.sv||'Server', date=D.date||'', user=D.user||'User',
+          fname=D.fname||user, uid=D.uid||'',
+          total=+D.total||0, allowed=+D.allowed||0,
+          bypassed=+D.bypassed||0, blocked=+D.blocked||0,
+          uip=+D.uip||0, bip=+D.bip||0;
+
+    const methods=parsePairs(D.methods), protocols=parsePairs(D.protocols),
+          nations=parsePairs(D.nations), sources=parsePairs(D.sources),
+          actions=parsePairs(D.actions);
+
+    const topCC=nations[0]?.label||'', topCnt=nations[0]?.value||0;
+
+    // â”€â”€ HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    app.innerHTML=`
+<div class="card header-card" style="margin-bottom:14px">
+  <div class="avatar">${(fname[0]||'U').toUpperCase()}</div>
+  <div class="header-info">
+    <div class="name">${fname}</div>
+    <div class="uname">@${user}</div>
+  </div>
+  <div class="uid-badge">âœˆï¸ UID: ${uid}</div>
+</div>
+
+<div class="stat-card" style="margin-bottom:14px;padding:18px 20px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px">
+    <div>
+      <div class="stat-label" style="font-size:13px">ðŸ“Š Total Requests</div>
+      <div class="stat-value" style="font-size:34px">${fmt(total)}</div>
+    </div>
+    <div style="text-align:right;font-size:12px">
+      <span style="color:#22c55e">â— ${pct(allowed,total)}</span>
+      <span style="color:#3b82f6;margin:0 6px">â— ${pct(bypassed,total)}</span>
+      <span style="color:#ef4444">â— ${pct(blocked,total)}</span>
+    </div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-seg green" style="width:${pct(allowed,total)}"></div>
+    <div class="progress-seg blue"  style="width:${pct(bypassed,total)}"></div>
+    <div class="progress-seg red"   style="width:${pct(blocked,total)}"></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;font-size:10px;color:#9ca3af;margin-top:4px;gap:10px">
+    <span>â— Allowed</span><span>â— Bypassed</span><span>â— Blocked</span>
+  </div>
+</div>
+
+<div class="grid3" style="margin-bottom:14px">
+  <div class="stat-card">
+    <div class="stat-label">âš¡ Normal Requests</div>
+    <div class="stat-value" style="font-size:24px">${fmt(allowed)}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">ðŸ”’ Firewall Events</div>
+    <div class="stat-value orange">${fmt(blocked)}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">â†’ Bypassed</div>
+    <div class="stat-value" style="font-size:24px">${fmt(bypassed)}</div>
+  </div>
+</div>
+
+<div class="grid3" style="margin-bottom:14px">
+  <div class="stat-card" style="background:#f0fdf4">
+    <div class="stat-label" style="font-size:12px;font-weight:700;color:#15803d">ðŸ“Š IP Statistics</div>
+    <div class="ip-grid">
+      <div class="ip-item"><div class="lbl">âš–ï¸ Unique IP</div><div class="val green">${fmt(uip)}</div></div>
+      <div class="ip-item"><div class="lbl">ðŸ›¡ Allowed IPs</div><div class="val green">${fmt(Math.max(0,uip-bip))}</div></div>
+      <div class="ip-item"><div class="lbl">âš ï¸ Blocked IPs</div><div class="val red">${fmt(bip)}</div></div>
+      <div class="ip-item"><div class="lbl">ðŸ”’ Bypassed IPs</div><div class="val orange">0</div></div>
+    </div>
+  </div>
+  <div class="traffic-card" style="background:#fffbeb">
+    <div class="stat-label" style="font-size:12px;font-weight:700;color:#92400e">ðŸ“Š Traffic Statistics</div>
+    <div class="progress-bar" style="margin-top:8px">
+      <div class="progress-seg green" style="width:${pct(allowed,total)}"></div>
+      <div class="progress-seg red"   style="width:${pct(blocked,total)}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:11px">
+      <div><span style="color:#22c55e">â— Allowed</span><br><b>${fmt(allowed)}</b><br><span style="color:#9ca3af">${pct(allowed,total)}</span></div>
+      <div><span style="color:#ef4444">â— Blocked</span><br><b>${fmt(blocked)}</b><br><span style="color:#9ca3af">${pct(blocked,total)}</span></div>
+      <div><span style="color:#3b82f6">â— Bypassed</span><br><b>${fmt(bypassed)}</b><br><span style="color:#9ca3af">${pct(bypassed,total)}</span></div>
+      <div><span style="color:#f59e0b">â— Total</span><br><b>${fmt(total)}</b><br><span style="color:#9ca3af">100%</span></div>
+    </div>
+  </div>
+  <div class="stat-card" style="background:#f0f9ff">
+    <div class="stat-label" style="font-size:12px;font-weight:700;color:#0369a1">ðŸ¥§ Traffic Distribution</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:8px">Top Country:</div>
+    <div style="font-size:13px;font-weight:600;margin-top:3px">${topCC?flag(topCC)+' '+topCC:'â€”'}</div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:4px">${pct(topCnt,uip||1)}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#6b7280">
+      <span>Requests: <b>${fmt(topCnt)}</b></span>
+      <span>Total: ${fmt(total)}</span>
+    </div>
+  </div>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <div class="chart-title">Block Source</div>
+    <div class="chart-wrap"><canvas id="chartSrc"></canvas></div>
+    <div id="legendSrc" class="legend" style="margin-top:8px"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">HTTP Protocol</div>
+    <div class="chart-wrap"><canvas id="chartProto"></canvas></div>
+    <div id="legendProto" class="legend" style="margin-top:8px"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">HTTP Method</div>
+    <div class="chart-wrap"><canvas id="chartMethod"></canvas></div>
+    <div id="legendMethod" class="legend" style="margin-top:8px"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Request Protocol</div>
+    <div class="chart-wrap"><canvas id="chartReqProto"></canvas></div>
+    <div id="legendReqProto" class="legend" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="auto-card">
+  <div class="section-title">ðŸ¤– Automated Access Recognition</div>
+  <div class="auto-sub">Whether Cloudflare detects automated access. Does not necessarily mean it will be blocked.</div>
+  <div id="actionBars"></div>
+</div>
+
+<div class="card">
+  <div style="font-size:15px;font-weight:700;margin-bottom:12px">ðŸŒ Country Distribution</div>
+  <div class="country-grid" id="countryGrid"></div>
+</div>
+
+<div style="text-align:center;color:#9ca3af;font-size:10px;margin-top:10px;padding-bottom:20px">
+  ðŸ“Š DstatCount Â· ${sv} Â· ${date}
+</div>`;
+
+    // â”€â”€ Top country â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // (already inlined above)
+
+    // â”€â”€ Pie charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    function makePie(cid, lid, data){
+      const tot=data.reduce((s,d)=>s+d.value,0)||1;
+      const ctx=document.getElementById(cid)?.getContext('2d');
+      if(!ctx) return;
+      new Chart(ctx,{
+        type:'doughnut',
+        data:{labels:data.map(d=>d.label),datasets:[{
+          data:data.map(d=>d.value),
+          backgroundColor:PIE_COLORS.slice(0,data.length),
+          borderWidth:2,borderColor:'#fff'
+        }]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed.toLocaleString()} (${pct(c.parsed,tot)})`}}
+          },
+          cutout:'58%'
+        }
+      });
+      const leg=document.getElementById(lid);
+      if(leg) data.forEach((d,i)=>{
+        leg.innerHTML+=`<span class="leg-item"><span class="leg-dot" style="background:${PIE_COLORS[i]};display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0"></span>${d.label}: ${pct(d.value,tot)}</span>`;
+      });
+    }
+
+    const srcData=sources.map(s=>({
+      label:s.label==='l7ddos'?'HTTP DDoS':s.label==='firewallManaged'?'Managed Rules':s.label==='pass'?'Allowed':s.label,
+      value:s.value
+    }));
+    if(srcData.length) makePie('chartSrc','legendSrc',srcData);
+    if(protocols.length) makePie('chartProto','legendProto',protocols);
+    if(methods.length) makePie('chartMethod','legendMethod',methods);
+    const httpsCount=protocols.reduce((s,p)=>s+p.value,0)||total;
+    makePie('chartReqProto','legendReqProto',[{label:'HTTPS',value:httpsCount}]);
+
+    // â”€â”€ Action bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const actContainer=document.getElementById('actionBars');
+    const actTotal=actions.reduce((s,a)=>s+a.value,0)||blocked||1;
+    const actLabels={block:'Block',challenge:'Challenge',jschallenge:'JS Challenge',
+      managed_challenge:'Managed Challenge',allow:'Allow',bypass:'Bypass',skip:'Skip'};
+    const actData=actions.length?actions:[{label:'block',value:blocked}];
+    actData.forEach((a,i)=>{
+      const label=actLabels[a.label]||a.label;
+      const fp=(a.value/actTotal*100).toFixed(1);
+      const p=Math.round(a.value/actTotal*100);
+      actContainer.innerHTML+=`
+        <div class="type-row"><span class="lbl">${label}</span><span class="val">${fmt(a.value)} (${fp}%)</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${PIE_COLORS[i%PIE_COLORS.length]}"></div></div>`;
+    });
+
+    // â”€â”€ Country grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const cGrid=document.getElementById('countryGrid');
+    const cTotal=nations.reduce((s,n)=>s+n.value,0)||uip||1;
+    nations.slice(0,10).forEach(n=>{
+      cGrid.innerHTML+=`
+        <div class="country-row">
+          <div class="country-left"><span class="flag">${flag(n.label)}</span><span>${n.label}</span></div>
+          <div class="country-right">
+            <div class="country-count">${fmt(n.value)}</div>
+            <div class="country-pct">${pct(n.value,cTotal)}</div>
+          </div>
+        </div>`;
+    });
+
+    // â”€â”€ Telegram WebApp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if(window.Telegram?.WebApp){ Telegram.WebApp.expand(); Telegram.WebApp.ready(); }
+
+  } catch(err){ showError('Failed to load: '+err.message); }
+})();
+</script>
+</body>
+</html>
